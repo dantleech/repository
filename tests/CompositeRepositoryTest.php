@@ -467,6 +467,24 @@ class CompositeRepositoryTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $this->repo->listChildren('/webmozart/path/to/dir'));
     }
 
+    public function testListChildrenWithMountPoints()
+    {
+        $repo = $this->getMock('Puli\Repository\Api\ResourceRepository');
+        $resource1 = new TestFile('/');
+
+        $this->repo->mount('/foobar', $repo);
+        $repo->expects($this->once())
+            ->method('get')
+            ->with('/')
+            ->will($this->returnValue($resource1));
+
+        $expected = new ArrayResourceCollection(array(
+            $resource1->createReference('/foobar'),
+        ));
+
+        $this->assertEquals($expected, $this->repo->listChildren('/'));
+    }
+
     public function testListRootDirectory()
     {
         $repo = $this->getMock('Puli\Repository\Api\ResourceRepository');

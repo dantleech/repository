@@ -18,6 +18,7 @@ use Puli\Repository\Api\ResourceRepository;
 use Puli\Repository\Assert\Assert;
 use Puli\Repository\Resource\Collection\ArrayResourceCollection;
 use Webmozart\PathUtil\Path;
+use Puli\Repository\Resource\CompositeResource;
 
 /**
  * A repository combining multiple other repository instances.
@@ -132,6 +133,12 @@ class CompositeRepository implements ResourceRepository
      */
     public function get($path)
     {
+        if ('/' === $path) {
+            $composite = new CompositeResource('/');
+            $composite->attachTo($this);
+            return $composite;
+        }
+
         list ($mountPoint, $subPath) = $this->splitPath($path);
 
         if (null === $mountPoint) {
@@ -182,6 +189,10 @@ class CompositeRepository implements ResourceRepository
      */
     public function hasChildren($path)
     {
+        if ('/' === $path) {
+            return count($this->repos) ? true : false;
+        }
+
         list ($mountPoint, $subPath) = $this->splitPath($path);
 
         if (null === $mountPoint) {
@@ -199,7 +210,26 @@ class CompositeRepository implements ResourceRepository
      */
     public function listChildren($path)
     {
+        $compositeCollection = new ArrayResourceCollection();
+
+        foreach ($this->repos as $mountPointPath => $repo) {
+            if (0 !== strpos($mountPointPath, $path)) {
+                continue;
+            }
+
+            if (substr_count($mountPointPath, '/') !== 1) {
+                continue;
+            }
+
+            $rootResource = $repo->get('/');
+            $compositeCollection->add($rootResource->createReference($mountPointPath));
+        }
+
         list ($mountPoint, $subPath) = $this->splitPath($path);
+
+        if (null === $mountPoint && '/' === $path) {
+            return $compositeCollection;
+        }
 
         if (null === $mountPoint) {
             throw new ResourceNotFoundException(sprintf(
@@ -208,10 +238,14 @@ class CompositeRepository implements ResourceRepository
             ));
         }
 
-        $resources = $this->getRepository($mountPoint)->listChildren($subPath);
-        $this->replaceByReferences($resources, $mountPoint);
+        $collection = $this->getRepository($mountPoint)->listChildren($subPath);
+        $this->replaceByReferences($collection, $mountPoint);
 
-        return $resources;
+        foreach ($collection as $resource) {
+            $compositeCollection->add($resource);
+        }
+
+        return $compositeCollection;
     }
 
     /**
@@ -235,7 +269,9 @@ class CompositeRepository implements ResourceRepository
                     return array($mountPoint, $path);
                 }
 
-                return array($mountPoint, substr($path, strlen($mountPoint)));
+                $subPath = substr($path, strlen($mountPoint)) ? : '/';
+
+                return array($mountPoint, $subPath);
             }
         }
 
