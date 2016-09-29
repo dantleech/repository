@@ -191,4 +191,13 @@ class FilesystemRepositoryCopyTest extends AbstractEditableRepositoryTest
     {
         $this->writeRepo->add('/webmozart/link', new LinkResource('/webmozart/puli/file'));
     }
+
+    public function testNonRealPath()
+    {
+        $repository = new FilesystemRepository(__DIR__ . '/Fixtures/dir5/sub/..');
+        $children = $repository->listChildren('/');
+        $children = iterator_to_array($children);
+        $this->assertArrayHasKey(0, $children);
+        $this->assertEquals('file1', $children[0]->getName());
+    }
 }

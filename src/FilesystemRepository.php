@@ -137,7 +137,7 @@ class FilesystemRepository extends AbstractEditableRepository
         Assert::boolean($symlink);
 
         $this->baseDir = rtrim(Path::canonicalize($baseDir), '/');
-        $this->baseDirLength = strlen($baseDir);
+        $this->baseDirLength = strlen($this->baseDir);
         $this->symlink = $symlink && self::isSymlinkSupported();
         $this->relative = $this->symlink && $relative;
         $this->filesystem = new Filesystem();
